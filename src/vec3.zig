@@ -47,13 +47,13 @@ const std = @import("std");
     pub fn dot(self: this, b: this) f64 {
         return self.e[0] * b.e[0] 
         + self.e[1] * b.e[1] 
-        + self.e[2] * b.e[2] 
+        + self.e[2] * b.e[2];
     }
     
     pub fn cross(self: this, b: this) this {
         return .init(self.e[1] * b.e[2] - self.e[2] * b.e[1],
                      self.e[2] * b.e[0] - self.e[0] * b.e[2],
-                     self.e[0] * b.e[1] - self.e[1] * b.e[0])
+                     self.e[0] * b.e[1] - self.e[1] * b.e[0]);
     }
 
     pub fn length_squared(self: this) f64 {
