@@ -1,10 +1,29 @@
 const std = @import("std");
 const Vec3 = @import("vec3.zig");
 const color = @import("color.zig");
+const Color = color.Color;
 const Ray = @import("ray.zig");
+const Point3 = Vec3;
 const Io = std.Io;
 
 const raytrace = @import("raytrace");
+
+pub fn hit_sphere(center Point3, radius: f64, r: Ray) bool {
+    const oc = center.sub(r.ori);
+    const a = r.dir.dot(r.dir);
+    const b = r.dir.dot(oc).mulScalar(-2.0);
+    const c = oc.dot(oc).sub(radius * radius);
+    const discriminant = b.mulElement(b).subScalar(4 * a * c);
+    return discriminant >= 0;
+}
+
+pub fn ray_color(r: Ray) Color {
+    const unit_direction: Vec3 = r.dir.unit_vector();
+    const a: f64 = 0.5 * (unit_direction.y() + 1.0);
+    return Color.init(1,1,1).mulScalar(1.0 - a).add(
+            Color.init(0.2,0.7,1.0).mulScalar(a)
+        );
+}
 
 pub fn main(init: std.process.Init) !void {
     // Prints to stderr, unbuffered, ignoring potential errors.
@@ -39,8 +58,35 @@ pub fn main(init: std.process.Init) !void {
     const aspect_ratio: f64 = 16.0 / 9.0;
 
     const image_width: usize = 512;
-    const image_height: usize = 256;
 
+    // Calculate the image height, and esure that it's at least 1.
+    var image_height: usize = @intFromFloat(@as(f64,@floatFromInt(image_width)) / aspect_ratio);
+    image_height = if (image_height < 1) 1 else image_height;
+
+    // Camera
+    // Viewport widths less than one are ok ther are real valued.
+    const focal_length: f64 = 1.0;
+    const viewport_height: f64 = 2.0;
+    const viewport_width = viewport_height * @as(f64,@floatFromInt(image_width)) / @as(f64,@floatFromInt(image_height));
+    const camera_center: Point3 = .init(0,0,0);
+
+    // Calculate the vectors across the horizontal and down the vertical viewport edges.
+    const viewport_u: Vec3 = .init(viewport_width, 0,0);
+    const viewport_v: Vec3 = .init(0,-viewport_height, 0);
+
+    // Calculate the horizontal and vertical delta vecotrs from pixel to pixel.
+    const pixel_delta_u = viewport_u.divScalar(@floatFromInt(image_width));
+    const pixel_delta_v = viewport_v.divScalar(@floatFromInt(image_height));
+
+    // Calculate the location of the upper left pixel.
+    const viewport_upper_left = camera_center.sub(
+        Vec3.init(0,0,focal_length)
+        ).sub(
+        viewport_u.divScalar(2)
+        ).sub(
+        viewport_v.divScalar(2)
+        );
+    const pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).mulScalar(0.5));
     // Render
     var buffer: [1024]u8 = undefined;
     const file = try std.Io.Dir.cwd().createFile(init.io, "./res/test_out.ppm", .{});
@@ -57,13 +103,18 @@ pub fn main(init: std.process.Init) !void {
     for (0..image_height) |j| {
         std.debug.print("\rScanlines remaining: {}",.{image_height-j});
         for (0..image_width) |i| {
-                const r: f64 = @as(f64,@floatFromInt(i)) / @as(f64,@floatFromInt(image_width-1));
-                const g: f64 = @as(f64,@floatFromInt(j)) / @as(f64,@floatFromInt(image_height-1));
-                const b: f64 = 0.15;
+                
+                const pixel_center = pixel00_loc.add(
+                    pixel_delta_u.mulScalar(@floatFromInt(i))
+                ).add(
+                    pixel_delta_v.mulScalar(@floatFromInt(j))
+                );
+                const ray_direction = pixel_center.sub(camera_center);
+                const ray: Ray = .init(camera_center, ray_direction);
 
-                const pixel: color.Color = .init(r,g,b);
+                const pixel_color: Color = ray_color(ray);
 
-                try color.write_color(w, &pixel);
+                try color.write_color(w, &pixel_color);
         }
 
     }
@@ -82,7 +133,7 @@ test "simple test" {
 test "ray test" {
     const ray: Ray = .init(.init(0,0,0), .init(1,1,1));
     try std.testing.expectEqual(ray.dir.x(), 1);
-    const at: Ray.Point3 = ray.at(5);
+    const at: Point3 = ray.at(5);
     try std.testing.expectEqual(at.x(), 5);
 }
 
