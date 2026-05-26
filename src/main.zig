@@ -8,18 +8,26 @@ const Io = std.Io;
 
 const raytrace = @import("raytrace");
 
-pub fn hit_sphere(center: Point3, radius: f64, r: Ray) bool {
+pub fn hit_sphere(center: Point3, radius: f64, r: Ray) f64 {
     const oc = center.sub(r.orig);
+    //const oc = r.orig.sub(center);
     const a = r.dir.dot(r.dir);
-    const b = r.dir.dot(oc) * 2.0;
+    const b = r.dir.dot(oc) * -2.0;
     const c = oc.dot(oc) - (radius * radius);
     const discriminant = b * b - (4 * a * c);
-    return discriminant >= 0;
+
+    if (discriminant < 0) {
+        return -1.0;
+    } else {
+        return (-b - @sqrt(discriminant)) / (2.0 * a);
+    }
 }
 
 pub fn ray_color(r: Ray) Color {
-    if (hit_sphere(Point3.init(0,0,-1), 0.5, r)) {
-        return .init(1,0,0);
+    const t = hit_sphere(Point3.init(0,0,-1), 0.5, r);
+    if (t > 0.0) {
+        const N: Vec3 = r.at(t).sub(.init(0,0,-1)).unit_vector();
+        return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
     }
 
     const unit_direction: Vec3 = r.dir.unit_vector();
