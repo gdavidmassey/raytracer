@@ -34,6 +34,9 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.flush(); // Don't forget to flush!
                                //
     // globals
+    
+
+    const aspect_ratio: f64 = 16.0 / 9.0;
 
     const image_width: usize = 512;
     const image_height: usize = 256;
@@ -74,6 +77,13 @@ test "simple test" {
     defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
     try list.append(gpa, 42);
     try std.testing.expectEqual(@as(i32, 42), list.pop());
+}
+
+test "ray test" {
+    const ray: Ray = .init(.init(0,0,0), .init(1,1,1));
+    try std.testing.expectEqual(ray.dir.x(), 1);
+    const at: Ray.Point3 = ray.at(5);
+    try std.testing.expectEqual(at.x(), 5);
 }
 
 test "fuzz example" {
