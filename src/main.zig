@@ -1,6 +1,7 @@
 const std = @import("std");
-const vec3 = @import("vec3.zig");
+const Vec3 = @import("vec3.zig");
 const color = @import("color.zig");
+const Ray = @import("ray.zig");
 const Io = std.Io;
 
 const raytrace = @import("raytrace");
@@ -53,15 +54,13 @@ pub fn main(init: std.process.Init) !void {
     for (0..image_height) |j| {
         std.debug.print("\rScanlines remaining: {}",.{image_height-j});
         for (0..image_width) |i| {
-                const r: f32 = @as(f32,@floatFromInt(i)) / @as(f32,@floatFromInt(image_width-1));
-                const g: f32 = @as(f32,@floatFromInt(j)) / @as(f32,@floatFromInt(image_height-1));
-                const b: f32 = 0.0;
+                const r: f64 = @as(f64,@floatFromInt(i)) / @as(f64,@floatFromInt(image_width-1));
+                const g: f64 = @as(f64,@floatFromInt(j)) / @as(f64,@floatFromInt(image_height-1));
+                const b: f64 = 0.15;
 
-            const ir: u8 = @intFromFloat(255.999 * r);
-            const ig: u8 = @intFromFloat(255.999 * g);
-            const ib: u8 = @intFromFloat(255.999 * b);
+                const pixel: color.Color = .init(r,g,b);
 
-            try w.print("{} {} {}\n",.{ir,ig,ib});
+                try color.write_color(w, &pixel);
         }
 
     }
