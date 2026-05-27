@@ -18,7 +18,7 @@ const this = @This();
         return .{.center = center, .radius = @max(0,radius)};
     }
 
-    pub fn hit(self:this, r: Ray, ray_t: Interval) ?HitRecord {
+    pub fn hit(self: this, r: Ray, ray_t: Interval) ?HitRecord {
         const oc = self.center.sub(r.orig);
         const a = r.dir.length_squared();
         const h = r.dir.dot(oc);
