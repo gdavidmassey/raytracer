@@ -36,6 +36,14 @@ const std = @import("std");
         return .{.e = [_]f64{self.x() * other.x(), self.y() * other.y(), self.z() * other.z()}};
     }
 
+    pub fn lerp(self: this, other: this, a: f64) this {
+        return .{.e = [_]f64{(1.0 - a) * self.x() + a * other.x(), (1.0 - a) * self.y() + a * other.y(), (1.0 - a) * self.z() + a * other.z()}};
+    }
+
+    pub fn addScalar(self: this, b: f64) this {
+        return .{.e = [_]f64{self.x() + b, self.y() + b, self.z() + b}};
+    }
+
     pub fn mulScalar(self: this, b: f64) this {
         return .{.e = [_]f64{self.x() * b, self.y() * b, self.z() * b}};
     }
@@ -50,6 +58,10 @@ const std = @import("std");
         + self.e[2] * b.e[2];
     }
     
+    pub fn rgb(self: this) this {
+        return self.addScalar(1.0).mulScalar(0.5);
+    }
+
     pub fn cross(self: this, b: this) this {
         return .init(self.e[1] * b.e[2] - self.e[2] * b.e[1],
                      self.e[2] * b.e[0] - self.e[0] * b.e[2],

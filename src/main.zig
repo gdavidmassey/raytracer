@@ -5,36 +5,62 @@ const Color = color.Color;
 const Ray = @import("ray.zig");
 const Point3 = Vec3;
 const Io = std.Io;
+const Sphere = @import("sphere.zig");
+const Interval = @import("interval.zig");
 
 const raytrace = @import("raytrace");
 
 pub fn hit_sphere(center: Point3, radius: f64, r: Ray) f64 {
     const oc = center.sub(r.orig);
     //const oc = r.orig.sub(center);
-    const a = r.dir.dot(r.dir);
-    const b = r.dir.dot(oc) * -2.0;
-    const c = oc.dot(oc) - (radius * radius);
-    const discriminant = b * b - (4 * a * c);
+    const a = r.dir.length_squared();
+    //const b = r.dir.dot(oc) * -2.0;
+    const h = r.dir.dot(oc);
+    const c = oc.length_squared() - (radius * radius);
+    const discriminant = h * h - a * c;
 
     if (discriminant < 0) {
         return -1.0;
     } else {
-        return (-b - @sqrt(discriminant)) / (2.0 * a);
+        return (h - @sqrt(discriminant)) / a;
     }
 }
 
 pub fn ray_color(r: Ray) Color {
-    const t = hit_sphere(Point3.init(0,0,-1), 0.5, r);
-    if (t > 0.0) {
-        const N: Vec3 = r.at(t).sub(.init(0,0,-1)).unit_vector();
-        return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
+    const spheres = [_]Sphere{
+        .init(.init(0.1,1,-2), 0.65),
+        .init(.init(0,0,-3), 0.5),
+        .init(.init(1,0,-2), 0.5),
+        .init(.init(0,-100.5,-1), 100),
+    };
+    
+    var hit_anything: bool = false;
+    var closest_so_far: f64 = std.math.inf(f64);
+    var ray_col: Color = .init(1.0,0,1.0);
+
+    for (spheres) |s| {
+        const hit = s.hit(r,.init(0,std.math.inf(f64))) orelse continue;
+        hit_anything = true;
+        const t = hit.t;
+
+        if (t > 0.0 and t < closest_so_far) {
+            closest_so_far = t;
+            const N_ = r.at(t).sub(.init(0,0,-1)).unit_vector();
+            const N = hit.normal.lerp(N_,0.35).unit_vector();
+            // Unit Vector range (-1.0)-1.0
+            // Shift unit vector range to 0.0-1.0 and interpret as XYZ-RGB
+            //return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
+            ray_col = N.rgb();
+        }
     }
 
-    const unit_direction: Vec3 = r.dir.unit_vector();
-    const a: f64 = 0.5 * (unit_direction.y() + 1.0);
-    return Color.init(1,1,1).mulScalar(1.0 - a).add(
-            Color.init(0.2,0.7,1.0).mulScalar(a)
-        );
+    if (!hit_anything) {
+        const unit_direction: Vec3 = r.dir.unit_vector();
+        const a: f64 = 0.5 * (unit_direction.y() + 1.0);
+        ray_col = Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
+    }
+
+    return ray_col;
 }
 
 pub fn main(init: std.process.Init) !void {
@@ -69,7 +95,7 @@ pub fn main(init: std.process.Init) !void {
 
     const aspect_ratio: f64 = 16.0 / 9.0;
 
-    const image_width: usize = 512;
+    const image_width: usize = 1024;
 
     // Calculate the image height, and esure that it's at least 1.
     var image_height: usize = @intFromFloat(@as(f64,@floatFromInt(image_width)) / aspect_ratio);
@@ -111,6 +137,7 @@ pub fn main(init: std.process.Init) !void {
     defer w.flush() catch {};
 
     try w.print("P3\n{} {}\n255\n",.{image_width, image_height});
+
 
     for (0..image_height) |j| {
         std.debug.print("\rScanlines remaining: {}",.{image_height-j});

@@ -1,7 +1,6 @@
 const Vec3 = @import("vec3.zig");
 pub const Point3 = Vec3;
 
-
     orig: Point3,
     dir: Vec3,
 
