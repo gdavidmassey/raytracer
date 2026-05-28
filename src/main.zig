@@ -7,7 +7,7 @@ const Point3 = Vec3;
 const Io = std.Io;
 const Sphere = @import("sphere.zig");
 const Interval = @import("interval.zig");
-const hit = @import("hittable.zig").hit;
+const Hittable = @import("hittable.zig");
 
 const raytrace = @import("raytrace");
 
@@ -28,10 +28,13 @@ pub fn hit_sphere(center: Point3, radius: f64, r: Ray) f64 {
 }
 
 pub fn ray_color(r: Ray) Color {
-    const spheres = [_]Sphere{
+    var spheres = [_]Sphere{
         .init(.init(0.1,1,-2), 0.65),
         .init(.init(0,0,-3), 0.5),
         .init(.init(1,0,-2), 0.5),
+        .init(.init(1,0,-15), 10.0),
+        .init(.init(1,10,-10), 8.0),
+        .init(.init(-5,2,-7), 2.0),
         .init(.init(0,-100.5,-1), 100),
     };
     
@@ -39,8 +42,9 @@ pub fn ray_color(r: Ray) Color {
     var closest_so_far: f64 = std.math.inf(f64);
     var ray_col: Color = .init(1.0,0,1.0);
 
-    for (spheres) |s| {
-        const hit_result = hit(s,r,.init(0,std.math.inf(f64))) orelse continue;
+    for (&spheres) |*s| {
+        const hittable: Hittable = .init(Sphere, s); 
+        const hit_result = hittable.hit(r,.init(0,std.math.inf(f64))) orelse continue;
         hit_anything = true;
         const t = hit_result.t;
 
