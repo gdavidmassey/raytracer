@@ -7,6 +7,7 @@ const Point3 = Vec3;
 const Io = std.Io;
 const Sphere = @import("sphere.zig");
 const Interval = @import("interval.zig");
+const hit = @import("hittable.zig").hit;
 
 const raytrace = @import("raytrace");
 
@@ -39,14 +40,14 @@ pub fn ray_color(r: Ray) Color {
     var ray_col: Color = .init(1.0,0,1.0);
 
     for (spheres) |s| {
-        const hit = s.hit(r,.init(0,std.math.inf(f64))) orelse continue;
+        const hit_result = hit(s,r,.init(0,std.math.inf(f64))) orelse continue;
         hit_anything = true;
-        const t = hit.t;
+        const t = hit_result.t;
 
         if (t > 0.0 and t < closest_so_far) {
             closest_so_far = t;
             const N_ = r.at(t).sub(.init(0,0,-1)).unit_vector();
-            const N = hit.normal.lerp(N_,0.35).unit_vector();
+            const N = hit_result.normal.lerp(N_,0.35).unit_vector();
             // Unit Vector range (-1.0)-1.0
             // Shift unit vector range to 0.0-1.0 and interpret as XYZ-RGB
             //return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);

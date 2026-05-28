@@ -1,4 +1,4 @@
-const Vec3 = @import("vec3.zig");
+ @import("vec3.zig");
 const Point3 = Vec3;
 const Ray = @import("ray.zig");
 const Interval = @import("interval.zig");
@@ -33,10 +33,9 @@ const HitRecord = @import("hittable.zig").HitRecord;
                 return null;
             }
         }
-        var rec: HitRecord = .{.t = root, .p = r.at(root), .normal = r.at(root).sub(self.center).divScalar(self.radius)};
-        const outward_normal = rec.p.sub(self.center).divScalar(self.radius);
-        rec.set_face_normal(r, outward_normal);
-        return rec;
+
+        return .{.t = root, .p = r.at(root), .normal = r.at(root).sub(self.center).divScalar(self.radius)};
+
     }
 
 
