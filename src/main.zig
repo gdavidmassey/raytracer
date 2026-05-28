@@ -8,6 +8,7 @@ const Io = std.Io;
 const Sphere = @import("sphere.zig");
 const Interval = @import("interval.zig");
 const Hittable = @import("hittable.zig");
+const HittableList = @import("hittableList.zig");
 
 const raytrace = @import("raytrace");
 
@@ -87,7 +88,7 @@ pub fn main(init: std.process.Init) !void {
     // Stdout is for the actual output of your application, for example if you
     // are implementing gzip, then only the compressed bytes should be sent to
     // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_buffer: [1024 * 1024 * 10]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
 
