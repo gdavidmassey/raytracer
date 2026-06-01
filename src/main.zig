@@ -1,5 +1,6 @@
 const std = @import("std");
 const Vec3 = @import("vec3.zig");
+const Camera = @import("camera.zig");
 const color = @import("color.zig");
 const Color = color.Color;
 const Ray = @import("ray.zig");
@@ -28,39 +29,36 @@ pub fn hit_sphere(center: Point3, radius: f64, r: Ray) f64 {
     }
 }
 
-pub fn ray_color(r: Ray) Color {
-    var spheres = [_]Sphere{
-        .init(.init(0.1,1,-2), 0.65),
-        .init(.init(0,0,-3), 0.5),
-        .init(.init(1,0,-2), 0.5),
-        .init(.init(1,0,-15), 10.0),
-        .init(.init(1,10,-10), 8.0),
-        .init(.init(-5,2,-7), 2.0),
-        .init(.init(0,-100.5,-1), 100),
-    };
+pub fn ray_color(r: Ray, world: Hittable) Color {
     
-    var hit_anything: bool = false;
-    var closest_so_far: f64 = std.math.inf(f64);
+    //var hit_anything: bool = false;
+   // var closest_so_far: f64 = std.math.inf(f64);
     var ray_col: Color = .init(1.0,0,1.0);
 
-    for (&spheres) |*s| {
-        const hittable: Hittable = .init(Sphere, s); 
-        const hit_result = hittable.hit(r,.init(0,std.math.inf(f64))) orelse continue;
-        hit_anything = true;
-        const t = hit_result.t;
+    //for (&spheres) |*s| {
+    //    const hittable: Hittable = .init(Sphere, s); 
+    //    const hit_result = hittable.hit(r,.init(0,std.math.inf(f64))) orelse continue;
+    //    hit_anything = true;
+    //    const t = hit_result.t;
 
-        if (t > 0.0 and t < closest_so_far) {
-            closest_so_far = t;
-            const N_ = r.at(t).sub(.init(0,0,-1)).unit_vector();
-            const N = hit_result.normal.lerp(N_,0.35).unit_vector();
-            // Unit Vector range (-1.0)-1.0
-            // Shift unit vector range to 0.0-1.0 and interpret as XYZ-RGB
-            //return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
-            ray_col = N.rgb();
-        }
-    }
+    //    if (t > 0.0 and t < closest_so_far) {
+    //        closest_so_far = t;
+    //        const N_ = r.at(t).sub(.init(0,0,-1)).unit_vector();
+    //        const N = hit_result.normal.lerp(N_,0.35).unit_vector();
+    //        // Unit Vector range (-1.0)-1.0
+    //        // Shift unit vector range to 0.0-1.0 and interpret as XYZ-RGB
+    //        //return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
+    //        ray_col = N.rgb();
+    //    }
+    //}
+    
+    const hit_record = world.hit(r, .init(0, std.math.inf(f64)));
 
-    if (!hit_anything) {
+    if (hit_record != null) {
+        const N_ = r.at(hit_record.?.t).sub(.init(0,0,-1)).unit_vector();
+        const N = hit_record.?.normal.lerp(N_,0.35).unit_vector();
+        ray_col = N.rgb();
+    } else {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
         ray_col = Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
@@ -75,6 +73,7 @@ pub fn main(init: std.process.Init) !void {
 
     // This is appropriate for anything that lives as long as the process.
     const arena: std.mem.Allocator = init.arena.allocator();
+    //const gpa = init.gpa;
 
     // Accessing command line arguments:
     const args = try init.minimal.args.toSlice(arena);
@@ -106,6 +105,28 @@ pub fn main(init: std.process.Init) !void {
     // Calculate the image height, and esure that it's at least 1.
     var image_height: usize = @intFromFloat(@as(f64,@floatFromInt(image_width)) / aspect_ratio);
     image_height = if (image_height < 1) 1 else image_height;
+    
+    // World
+    
+    var world: HittableList = .{};
+    defer world.deinit(arena);
+    const hittable_world: Hittable = .init(HittableList, &world);
+
+    var spheres = [_]Sphere{
+        .init(.init(0.1,1,-2), 0.65),
+        .init(.init(0,0,-3), 0.5),
+        .init(.init(1,0,-2), 0.5),
+        .init(.init(1,0,-15), 10.0),
+        .init(.init(1,10,-10), 8.0),
+        .init(.init(-5,2,-7), 2.0),
+        .init(.init(-2,1,-2), 0.1),
+        .init(.init(2.5,1,-3), 0.1),
+        .init(.init(0,-100.5,-1), 100),
+    };
+
+    for (&spheres) |*s| {
+        try world.add(arena, .init(Sphere, s));    
+    }
 
     // Camera
     // Viewport widths less than one are ok ther are real valued.
@@ -157,7 +178,7 @@ pub fn main(init: std.process.Init) !void {
                 const ray_direction = pixel_center.sub(camera_center);
                 const ray: Ray = .init(camera_center, ray_direction);
 
-                const pixel_color: Color = ray_color(ray);
+                const pixel_color: Color = Camera.ray_color(ray, hittable_world);
 
                 try color.write_color(w, &pixel_color);
         }
