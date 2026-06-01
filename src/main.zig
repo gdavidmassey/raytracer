@@ -13,60 +13,6 @@ const HittableList = @import("hittableList.zig");
 
 const raytrace = @import("raytrace");
 
-pub fn hit_sphere(center: Point3, radius: f64, r: Ray) f64 {
-    const oc = center.sub(r.orig);
-    //const oc = r.orig.sub(center);
-    const a = r.dir.length_squared();
-    //const b = r.dir.dot(oc) * -2.0;
-    const h = r.dir.dot(oc);
-    const c = oc.length_squared() - (radius * radius);
-    const discriminant = h * h - a * c;
-
-    if (discriminant < 0) {
-        return -1.0;
-    } else {
-        return (h - @sqrt(discriminant)) / a;
-    }
-}
-
-pub fn ray_color(r: Ray, world: Hittable) Color {
-    
-    //var hit_anything: bool = false;
-   // var closest_so_far: f64 = std.math.inf(f64);
-    var ray_col: Color = .init(1.0,0,1.0);
-
-    //for (&spheres) |*s| {
-    //    const hittable: Hittable = .init(Sphere, s); 
-    //    const hit_result = hittable.hit(r,.init(0,std.math.inf(f64))) orelse continue;
-    //    hit_anything = true;
-    //    const t = hit_result.t;
-
-    //    if (t > 0.0 and t < closest_so_far) {
-    //        closest_so_far = t;
-    //        const N_ = r.at(t).sub(.init(0,0,-1)).unit_vector();
-    //        const N = hit_result.normal.lerp(N_,0.35).unit_vector();
-    //        // Unit Vector range (-1.0)-1.0
-    //        // Shift unit vector range to 0.0-1.0 and interpret as XYZ-RGB
-    //        //return Color.init(N.x()+1, N.y()+1, N.z()+1).mulScalar(0.5);
-    //        ray_col = N.rgb();
-    //    }
-    //}
-    
-    const hit_record = world.hit(r, .init(0, std.math.inf(f64)));
-
-    if (hit_record != null) {
-        const N_ = r.at(hit_record.?.t).sub(.init(0,0,-1)).unit_vector();
-        const N = hit_record.?.normal.lerp(N_,0.35).unit_vector();
-        ray_col = N.rgb();
-    } else {
-        const unit_direction: Vec3 = r.dir.unit_vector();
-        const a: f64 = 0.5 * (unit_direction.y() + 1.0);
-        ray_col = Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
-    }
-
-    return ray_col;
-}
-
 pub fn main(init: std.process.Init) !void {
     // Prints to stderr, unbuffered, ignoring potential errors.
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
@@ -97,15 +43,10 @@ pub fn main(init: std.process.Init) !void {
                                //
     // globals
     
-
-    const aspect_ratio: f64 = 16.0 / 9.0;
-
-    const image_width: usize = 1024;
-
-    // Calculate the image height, and esure that it's at least 1.
-    var image_height: usize = @intFromFloat(@as(f64,@floatFromInt(image_width)) / aspect_ratio);
-    image_height = if (image_height < 1) 1 else image_height;
-    
+    var cam: Camera = .{};
+    cam.aspect_ratio = 16.0 / 9.0;
+    cam.image_width = 1024;
+    cam.init();
     // World
     
     var world: HittableList = .{};
@@ -128,64 +69,7 @@ pub fn main(init: std.process.Init) !void {
         try world.add(arena, .init(Sphere, s));    
     }
 
-    // Camera
-    // Viewport widths less than one are ok ther are real valued.
-    const focal_length: f64 = 1.0;
-    const viewport_height: f64 = 2.0;
-    const viewport_width = viewport_height * @as(f64,@floatFromInt(image_width)) / @as(f64,@floatFromInt(image_height));
-    const camera_center: Point3 = .init(0,0,0);
-
-    // Calculate the vectors across the horizontal and down the vertical viewport edges.
-    const viewport_u: Vec3 = .init(viewport_width, 0,0);
-    const viewport_v: Vec3 = .init(0,-viewport_height, 0);
-
-    // Calculate the horizontal and vertical delta vecotrs from pixel to pixel.
-    const pixel_delta_u = viewport_u.divScalar(@floatFromInt(image_width));
-    const pixel_delta_v = viewport_v.divScalar(@floatFromInt(image_height));
-
-    // Calculate the location of the upper left pixel.
-    const viewport_upper_left = camera_center.sub(
-        Vec3.init(0,0,focal_length)
-        ).sub(
-        viewport_u.divScalar(2)
-        ).sub(
-        viewport_v.divScalar(2)
-        );
-    const pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).mulScalar(0.5));
-    // Render
-    var buffer: [1024]u8 = undefined;
-    const file = try std.Io.Dir.cwd().createFile(init.io, "./res/test_out.ppm", .{});
-    defer file.close(init.io);
-    const len = try file.realPath(init.io, &buffer);
-    std.debug.print("The test begins\n", .{});
-    std.debug.print("{s}\n",.{buffer[0..len]});
-    var writer = file.writer(init.io, &buffer);
-    const w = &writer.interface;
-    defer w.flush() catch {};
-
-    try w.print("P3\n{} {}\n255\n",.{image_width, image_height});
-
-
-    for (0..image_height) |j| {
-        std.debug.print("\rScanlines remaining: {}",.{image_height-j});
-        for (0..image_width) |i| {
-                
-                const pixel_center = pixel00_loc.add(
-                    pixel_delta_u.mulScalar(@floatFromInt(i))
-                ).add(
-                    pixel_delta_v.mulScalar(@floatFromInt(j))
-                );
-                const ray_direction = pixel_center.sub(camera_center);
-                const ray: Ray = .init(camera_center, ray_direction);
-
-                const pixel_color: Color = Camera.ray_color(ray, hittable_world);
-
-                try color.write_color(w, &pixel_color);
-        }
-
-    }
-    std.debug.print("\rDone.                          \n",.{});
-
+    try cam.render(io, hittable_world);
 }
 
 test "simple test" {

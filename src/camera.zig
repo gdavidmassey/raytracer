@@ -10,7 +10,46 @@ const Interval = @import("interval.zig");
 const Hittable = @import("hittable.zig");
 const HittableList = @import("hittableList.zig");
 
-pub fn init() void {
+aspect_ratio: f64 = 1.0,
+image_width: usize = 100,
+image_height: usize = undefined,
+center: Point3 = undefined,
+pixel00_loc: Point3 = undefined,
+pixel_delta_u: Vec3 = undefined,
+pixel_delta_v: Vec3 = undefined,
+
+const this = @This();
+
+pub fn init(self: *@This()) void {
+    // Camera
+    // Viewport widths less than one are ok ther are real valued.
+    self.image_height = @intFromFloat(@as(f64,@floatFromInt(self.image_width)) / self.aspect_ratio);
+    self.image_height = if (self.image_height < 1) 1 else self.image_height;
+    
+    self.center = .init(0,0,0);
+
+    // Determine viewport dimensions.
+    const focal_length: f64 = 1.0;
+    const viewport_height: f64 = 2.0;
+    const viewport_width = viewport_height * @as(f64,@floatFromInt(self.image_width)) / @as(f64,@floatFromInt(self.image_height));
+
+    // Calculate the vectors across the horizontal and down the vertical viewport edges.
+    const viewport_u: Vec3 = .init(viewport_width, 0,0);
+    const viewport_v: Vec3 = .init(0,-viewport_height, 0);
+
+    // Calculate the horizontal and vertical delta vecotrs from pixel to pixel.
+    self.pixel_delta_u = viewport_u.divScalar(@floatFromInt(self.image_width));
+    self.pixel_delta_v = viewport_v.divScalar(@floatFromInt(self.image_height));
+
+    // Calculate the location of the upper left pixel.
+    const viewport_upper_left = self.center.sub(
+        Vec3.init(0,0,focal_length)
+        ).sub(
+        viewport_u.divScalar(2)
+        ).sub(
+        viewport_v.divScalar(2)
+        );
+    self.pixel00_loc = viewport_upper_left.add(self.pixel_delta_u.add(self.pixel_delta_v).mulScalar(0.5));
 }
 
 pub fn ray_color(r: Ray, world: Hittable) Color {
@@ -27,5 +66,41 @@ pub fn ray_color(r: Ray, world: Hittable) Color {
     };
 
     return ray_col;
+}
+
+pub fn render(self: this, io: std.Io, world: Hittable) !void {
+    var buffer: [1024]u8 = undefined;
+    const file = try std.Io.Dir.cwd().createFile(io, "./res/test_out.ppm", .{});
+    defer file.close(io);
+    const len = try file.realPath(io, &buffer);
+    std.debug.print("The test begins\n", .{});
+    std.debug.print("{s}\n",.{buffer[0..len]});
+    var writer = file.writer(io, &buffer);
+    const w = &writer.interface;
+    defer w.flush() catch {};
+
+    try w.print("P3\n{} {}\n255\n",.{self.image_width, self.image_height});
+
+
+    for (0..self.image_height) |j| {
+        std.debug.print("\rScanlines remaining: {}",.{self.image_height-j});
+        for (0..self.image_width) |i| {
+                
+                const pixel_center = self.pixel00_loc.add(
+                    self.pixel_delta_u.mulScalar(@floatFromInt(i))
+                ).add(
+                    self.pixel_delta_v.mulScalar(@floatFromInt(j))
+                );
+                const ray_direction = pixel_center.sub(self.center);
+                const ray: Ray = .init(self.center, ray_direction);
+
+                const pixel_color: Color = ray_color(ray, world);
+
+                try color.write_color(w, &pixel_color);
+        }
+
+    }
+    std.debug.print("\rDone.                          \n",.{});
+
 }
 
