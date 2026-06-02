@@ -12,7 +12,11 @@ const HittableList = @import("hittableList.zig");
 
 aspect_ratio: f64 = 1.0,
 image_width: usize = 100,
+samples_per_pixel: usize = 1,
+
+
 image_height: usize = undefined,
+pixel_samples_scale: f64 = undefined,
 center: Point3 = undefined,
 pixel00_loc: Point3 = undefined,
 pixel_delta_u: Vec3 = undefined,
@@ -26,6 +30,8 @@ pub fn init(self: *@This()) void {
     self.image_height = @intFromFloat(@as(f64,@floatFromInt(self.image_width)) / self.aspect_ratio);
     self.image_height = if (self.image_height < 1) 1 else self.image_height;
     
+    self.pixel_samples_scale = 1.0 / @as(f64,@floatFromInt(self.samples_per_pixel));
+
     self.center = .init(0,0,0);
 
     // Determine viewport dimensions.
@@ -58,6 +64,7 @@ pub fn ray_color(r: Ray, world: Hittable) Color {
     ray_col = if (world.hit(r, Interval.init(0, std.math.inf(f64)))) |hr| t: {
         const N_ = r.at(hr.t).sub(.init(0,0,-1)).unit_vector();
         const N = hr.normal.lerp(N_,0.35).unit_vector();
+        //N.e[2] = 1.0;
         break :t N.rgb();
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
@@ -68,7 +75,28 @@ pub fn ray_color(r: Ray, world: Hittable) Color {
     return ray_col;
 }
 
-pub fn render(self: this, io: std.Io, world: Hittable) !void {
+fn get_ray(self: this, rand: std.Random, i: usize, j: usize) Ray {
+    // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i,j
+
+    const offset: Vec3 = sample_square(rand);
+    const pixel_sample: Point3 = self.pixel00_loc.add(
+            self.pixel_delta_u.mulScalar(@as(f64,@floatFromInt(i)) + offset.x())
+        ).add(
+            self.pixel_delta_v.mulScalar(@as(f64,@floatFromInt(j)) + offset.y())
+        );
+        
+    const ray_origin = self.center;
+    const ray_direction = pixel_sample.sub(ray_origin);
+
+    return .init(ray_origin, ray_direction);
+}
+
+fn sample_square(rand: std.Random) Vec3 {
+    // Returns the vector to a random point in the [-.5, -.5]-[.5,.5] unit square.
+    return .init(rand.float(f64) - 0.5, rand.float(f64) - 0.5, 0);
+}
+
+pub fn render(self: this, io: std.Io, rand: std.Random, world: Hittable) !void {
     var buffer: [1024]u8 = undefined;
     const file = try std.Io.Dir.cwd().createFile(io, "./res/test_out.ppm", .{});
     defer file.close(io);
@@ -85,18 +113,26 @@ pub fn render(self: this, io: std.Io, world: Hittable) !void {
     for (0..self.image_height) |j| {
         std.debug.print("\rScanlines remaining: {}",.{self.image_height-j});
         for (0..self.image_width) |i| {
+
                 
-                const pixel_center = self.pixel00_loc.add(
-                    self.pixel_delta_u.mulScalar(@floatFromInt(i))
-                ).add(
-                    self.pixel_delta_v.mulScalar(@floatFromInt(j))
-                );
-                const ray_direction = pixel_center.sub(self.center);
-                const ray: Ray = .init(self.center, ray_direction);
+                //const pixel_center = self.pixel00_loc.add(
+                //    self.pixel_delta_u.mulScalar(@floatFromInt(i))
+                //).add(
+                //    self.pixel_delta_v.mulScalar(@floatFromInt(j))
+                //);
+                //const ray_direction = pixel_center.sub(self.center); 
+                //const ray: Ray = .init(self.center, ray_direction);
+                //const pixel_color: Color = ray_color(ray, world);
+                var pixel_color: Color = .init(0,0,0);
 
-                const pixel_color: Color = ray_color(ray, world);
+                for (0..self.samples_per_pixel) |_| {
+                    const ray: Ray = self.get_ray(rand, i, j);
+                    pixel_color.addEq(ray_color(ray, world));
+                }
 
-                try color.write_color(w, &pixel_color);
+                //const pixel_color: Color = ray_color(ray, world);
+
+                try color.write_color(w, pixel_color.mulScalar(self.pixel_samples_scale));
         }
 
     }

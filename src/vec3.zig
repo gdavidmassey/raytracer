@@ -24,6 +24,13 @@ const std = @import("std");
         return .{.e = [_]f64{self.x() + other.x(), self.y() + other.y(), self.z() + other.z()}};
     }
 
+    pub fn addEq(self: *this, other: this) void {
+        self.e[0] += other.x();
+        self.e[1] += other.y();
+        self.e[2] += other.z();
+        return;
+    }
+
     pub fn sub(self: this, other: this) this {
         return .{.e = [_]f64{self.x() - other.x(), self.y() - other.y(), self.z() - other.z()}};
     }

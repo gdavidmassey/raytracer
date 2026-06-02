@@ -20,6 +20,12 @@ const this = @This();
         return self.min < x and x < self.max;
     }
 
+    pub fn clamp(self: this, x: f64) f64 {
+        if (x < self.min) return self.min;
+        if (x > self.max) return self.max;
+        return x;
+    }
+
 const empty: this = .{};
 const universe: this = .{.min = -std.math.inf(f64), .max = std.math.inf(f64)};
 
