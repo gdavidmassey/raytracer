@@ -12,8 +12,8 @@ const HittableList = @import("hittableList.zig");
 
 aspect_ratio: f64 = 1.0,
 image_width: usize = 100,
-samples_per_pixel: usize = 1,
-
+samples_per_pixel: usize = 10,
+max_depth: usize = 10,
 
 image_height: usize = undefined,
 pixel_samples_scale: f64 = undefined,
@@ -21,6 +21,7 @@ center: Point3 = undefined,
 pixel00_loc: Point3 = undefined,
 pixel_delta_u: Vec3 = undefined,
 pixel_delta_v: Vec3 = undefined,
+
 
 const this = @This();
 
@@ -38,7 +39,7 @@ pub fn init(self: *@This()) void {
     const focal_length: f64 = 1.0;
     const viewport_height: f64 = 2.0;
     const viewport_width = viewport_height * @as(f64,@floatFromInt(self.image_width)) / @as(f64,@floatFromInt(self.image_height));
-
+  
     // Calculate the vectors across the horizontal and down the vertical viewport edges.
     const viewport_u: Vec3 = .init(viewport_width, 0,0);
     const viewport_v: Vec3 = .init(0,-viewport_height, 0);
@@ -58,14 +59,17 @@ pub fn init(self: *@This()) void {
     self.pixel00_loc = viewport_upper_left.add(self.pixel_delta_u.add(self.pixel_delta_v).mulScalar(0.5));
 }
 
-pub fn ray_color(r: Ray, world: Hittable) Color {
+pub fn ray_color(rand: std.Random, r: Ray, depth: usize, world: Hittable) Color {
     
+    if (depth == 0) return .init(0,0,0);
     var ray_col: Color = .init(1.0,0,1.0);
     ray_col = if (world.hit(r, Interval.init(0, std.math.inf(f64)))) |hr| t: {
-        const N_ = r.at(hr.t).sub(.init(0,0,-1)).unit_vector();
-        const N = hr.normal.lerp(N_,0.35).unit_vector();
-        //N.e[2] = 1.0;
-        break :t N.rgb();
+        //const N_ = r.at(hr.t).sub(.init(0,0,-1)).unit_vector();
+        //const N = hr.normal.lerp(N_,0.35).unit_vector();
+        ////N.e[2] = 1.0;
+        //break :t N.rgb();
+        const direction = Vec3.random_on_hemisphere(rand,hr.normal);
+        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulScalar(0.5);
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
@@ -127,7 +131,7 @@ pub fn render(self: this, io: std.Io, rand: std.Random, world: Hittable) !void {
 
                 for (0..self.samples_per_pixel) |_| {
                     const ray: Ray = self.get_ray(rand, i, j);
-                    pixel_color.addEq(ray_color(ray, world));
+                    pixel_color.addEq(ray_color(rand, ray, self.max_depth, world));
                 }
 
                 //const pixel_color: Color = ray_color(ray, world);

@@ -23,7 +23,7 @@ pub fn main(init: std.process.Init) !void {
 
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
-    cam.image_width = 1024;
+    cam.image_width = 512;
     cam.init();
     // World
     
@@ -33,7 +33,7 @@ pub fn main(init: std.process.Init) !void {
 
     var spheres = [_]Sphere{
         .init(.init(0.1,1,-2), 0.65),
-        .init(.init(0,0,-3), 0.5),
+        .init(.init(0,0,-1), 0.5),
         .init(.init(1,0,-2), 0.5),
         .init(.init(1,0,-15), 10.0),
         .init(.init(1,10,-10), 8.0),

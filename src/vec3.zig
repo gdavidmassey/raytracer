@@ -86,5 +86,30 @@ const std = @import("std");
     pub fn unit_vector(self: this) this {
         return self.divScalar(self.length());
     }
-    
 
+    pub fn random_unit_vector(rand: std.Random) this {
+        var cnt: usize = 0;
+        while (true) {
+            const p = random_range(rand,-1,1);
+            const lensq = p.length_squared();
+            if ((1e-160 < lensq and lensq <= 1) or cnt > 100) 
+                return p.divScalar(@sqrt(lensq)); 
+            cnt += 1;
+        }
+    }
+
+    pub fn random_on_hemisphere(rand: std.Random, normal: this) this {
+        const on_unit_sphere = random_unit_vector(rand);
+        if (on_unit_sphere.dot(normal) > 0.0) { // In the same hemisphere as the normal
+            return on_unit_sphere;
+        }
+        return on_unit_sphere.inv(); 
+    }
+    
+    pub fn random (rand: std.Random) this { 
+        return .init(rand.float(f64),rand.float(f64),rand.float(f64));
+    }
+
+    pub fn random_range(rand: std.Random, min: f64, max: f64) this {
+        return .init(min + rand.float(f64) * (max - min),min + rand.float(f64) * (max - min), min + rand.float(f64) * (max - min));
+    }
