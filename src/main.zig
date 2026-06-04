@@ -2,6 +2,7 @@ const std = @import("std");
 const Io = std.Io;
 const Camera = @import("camera.zig");
 const Sphere = @import("sphere.zig");
+const Color = @import("color.zig").Color;
 const Hittable = @import("hittable.zig");
 const HittableList = @import("hittableList.zig");
 
@@ -11,7 +12,7 @@ pub fn main(init: std.process.Init) !void {
     const io = init.io;
 
     var prng = std.Random.DefaultPrng.init(1);
-    const rng = prng.random();
+    var rng = prng.random();
 
     const rng_impl: std.Random.IoSource = .{ .io = io};
     const srand = rng_impl.interface();
@@ -23,7 +24,7 @@ pub fn main(init: std.process.Init) !void {
 
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
-    cam.image_width = 400; //3840;
+    cam.image_width = 1400; //3840;
     cam.samples_per_pixel = 10;
     cam.max_depth = 50;
     cam.init();
@@ -49,6 +50,10 @@ pub fn main(init: std.process.Init) !void {
         try world.add(arena, .init(Sphere, s));    
     }
 
-    try cam.render(io, rng, hittable_world);
+    const color_buffer = try arena.alloc(Color,cam.image_height * cam.image_width);
+    const thread_buffer = try arena.alloc(std.Thread,cam.image_height); 
+    defer arena.free(color_buffer);
+    defer arena.free(thread_buffer);
+    try cam.render(io, &rng, color_buffer, thread_buffer, hittable_world);
 }
 
