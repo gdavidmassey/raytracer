@@ -23,7 +23,9 @@ pub fn main(init: std.process.Init) !void {
 
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
-    cam.image_width = 512;
+    cam.image_width = 400; //3840;
+    cam.samples_per_pixel = 10;
+    cam.max_depth = 50;
     cam.init();
     // World
     

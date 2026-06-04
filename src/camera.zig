@@ -63,12 +63,12 @@ pub fn ray_color(rand: std.Random, r: Ray, depth: usize, world: Hittable) Color 
     
     if (depth == 0) return .init(0,0,0);
     var ray_col: Color = .init(1.0,0,1.0);
-    ray_col = if (world.hit(r, Interval.init(0, std.math.inf(f64)))) |hr| t: {
+    ray_col = if (world.hit(r, Interval.init(0.001, std.math.inf(f64)))) |hr| t: {
         //const N_ = r.at(hr.t).sub(.init(0,0,-1)).unit_vector();
         //const N = hr.normal.lerp(N_,0.35).unit_vector();
         ////N.e[2] = 1.0;
         //break :t N.rgb();
-        const direction = Vec3.random_on_hemisphere(rand,hr.normal);
+        const direction = Vec3.random_unit_vector(rand).add(hr.normal);
         break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulScalar(0.5);
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
