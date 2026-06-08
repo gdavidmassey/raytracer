@@ -59,7 +59,7 @@ pub fn init(self: *@This()) void {
     self.pixel00_loc = viewport_upper_left.add(self.pixel_delta_u.add(self.pixel_delta_v).mulScalar(0.5));
 }
 
-pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color {
+pub fn ray_color(rand: std.Random, r: Ray, depth: usize, world: Hittable) Color {
     
     if (depth == 0) return .init(0,0,0);
     var ray_col: Color = .init(1.0,0,1.0);
@@ -68,8 +68,9 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
         //const N = hr.normal.lerp(N_,0.35).unit_vector();
         ////N.e[2] = 1.0;
         //break :t N.rgb();
-        const direction = Vec3.random_unit_vector(rand).add(hr.normal);
-        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulScalar(0.5);
+        //const direction = Vec3.random_unit_vector(rand).add(hr.normal);
+        const direction = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
+        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulElement(Color.init(0.6,0.6,0.6));
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
@@ -79,7 +80,7 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
     return ray_col;
 }
 
-fn get_ray(self: this, rand: *std.Random, i: usize, j: usize) Ray {
+fn get_ray(self: this, rand: std.Random, i: usize, j: usize) Ray {
     // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i,j
 
     const offset: Vec3 = sample_square(rand);
@@ -95,12 +96,12 @@ fn get_ray(self: this, rand: *std.Random, i: usize, j: usize) Ray {
     return .init(ray_origin, ray_direction);
 }
 
-fn sample_square(rand: *std.Random) Vec3 {
+fn sample_square(rand: std.Random) Vec3 {
     // Returns the vector to a random point in the [-.5, -.5]-[.5,.5] unit square.
     return .init(rand.float(f64) - 0.5, rand.float(f64) - 0.5, 0);
 }
 
-pub fn render(self: this, io: std.Io, rand: *std.Random, color_buffer: []Color, threads: []std.Thread, world: Hittable) !void {
+pub fn render(self: this, io: std.Io, color_buffer: []Color, threads: []std.Thread, world: Hittable) !void {
     var buffer: [1024]u8 = undefined;
     const file = try std.Io.Dir.cwd().createFile(io, "./res/test_out.ppm", .{});
     defer file.close(io);
@@ -112,44 +113,43 @@ pub fn render(self: this, io: std.Io, rand: *std.Random, color_buffer: []Color, 
     defer w.flush() catch {};
 
     try w.print("P3\n{} {}\n255\n",.{self.image_width, self.image_height});
-
-    var mutex = std.Io.Mutex.init;
-    var scanlines_remaining: usize = self.image_height;
-    for (0..self.image_height) |j| {
-        std.debug.print("\rScanlines remaining: {}",.{self.image_height-j});
+    
+    var next_row: std.atomic.Value(usize) = .init(0);
+    for (0..8) |j| {
             threads[j] = try std.Thread.spawn(
                 .{}, 
                 render_row,
                 .{
                     self,
-                    &mutex,
-                    io,
-                    rand,
-                    color_buffer[self.image_width * j..self.image_width * j + self.image_width],
-                    &scanlines_remaining,
-                    j,
+                    color_buffer,
+                    &next_row,
                     world
                 }
             );
         }
-    for (threads) |t| t.join();
-    for (color_buffer) |c| try color.write_color(w, c.mulScalar(self.pixel_samples_scale));
+    for (threads) |t| {
+            t.join();
+    }
+    for (color_buffer) |c| try color.write_color(w, c);
     std.debug.print("\rDone.                          \n",.{});
 }
 
-fn render_row(self: this, mutex: *std.Io.Mutex, io: std.Io, rand: *std.Random, buffer: []Color, remaining: *usize, row: usize, world: Hittable) !void {
-        std.debug.print("\rScanlines remaining: {}",.{remaining.*});
+pub fn render_row(self: this, buffer: []Color, row: *std.atomic.Value(usize), world: Hittable) !void {
+    while (true) {
+        const next_row = row.fetchAdd(1, .monotonic);
+        if (next_row >= self.image_height) break;
+        var prng = std.Random.DefaultPrng.init(next_row);
+        const rand = prng.random();
         for (0..self.image_width) |i| {
            var pixel_color: Color = .init(0,0,0);
 
            for (0..self.samples_per_pixel) |_| {
-               const ray: Ray = self.get_ray(rand, i, row);
+               const ray: Ray = self.get_ray(rand, i, next_row);
                pixel_color.addEq(ray_color(rand, ray, self.max_depth, world));
            }
 
-            buffer[i] = pixel_color.mulScalar(self.pixel_samples_scale);
+            buffer[self.image_width * next_row + i] = pixel_color.mulScalar(self.pixel_samples_scale);
         }
-        try mutex.lock(io);
-        defer mutex.unlock(io);
-        remaining.* += 1;
+        std.debug.print("\rScanlines remaining: {}",.{self.image_height - next_row});
+    }
 }

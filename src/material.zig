@@ -7,13 +7,13 @@ const Hittable = @import("hittable.zig");
 const Color = @import("color.zig");
 
 obj: *anyopaque,
-hitFn: *const fn(*anyopaque, Ray, Interval) ?HitRecord,
+scatterFn: *const fn(*anyopaque, HitRecord) ?HitRecord,
 
 pub fn init(comptime T: type, obj: *T) @This() {
-    return .{.obj = obj, .hitFn = hitImp(T)};
+    return .{.obj = obj, .scatterFn = scatterImp(T)};
 }
 
-fn scatterImp(comptime T: type) *const fn (*anyopaque, Ray, Interval) ?HitRecord {
+fn scatterImp(comptime T: type) *const fn (*anyopaque, ) ?HitRecord {
     return struct {
         fn f(ptr: *anyopaque, r_in: Ray, rec: Hittable.HitRecord, attenuation: Color, scattered: Ray) bool {
             const self = @as(*T, @ptrCast(@alignCast(ptr)));
