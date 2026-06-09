@@ -7,6 +7,9 @@ const Cube = @import("cube.zig");
 const Color = @import("color.zig").Color;
 const Hittable = @import("hittable.zig");
 const HittableList = @import("hittableList.zig");
+const Material = @import("material.zig");
+const Metal = @import("metal.zig");
+const Lambertian = @import("lambertian.zig");
 
 pub fn main(init: std.process.Init) !void {
     // This is appropriate for anything that lives as long as the process.
@@ -24,39 +27,44 @@ pub fn main(init: std.process.Init) !void {
 
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
-    cam.image_width = 3840; //3840;
-    cam.samples_per_pixel = 255;
-    cam.max_depth = 50;
+    cam.image_width = 800; //3840;
+    cam.samples_per_pixel = 50;
+    cam.max_depth = 20;
     cam.init();
     // World
-    
     var world: HittableList = .{};
     defer world.deinit(arena);
     const hittable_world: Hittable = .init(HittableList, &world);
 
+    var dull: Lambertian = .init(.init(0.2,0.8,0.2));
+    const dull_mat: Material = .init(Lambertian, &dull);
+
+    var shiny: Metal = .init(.init(0.5,0.5,0.5));
+    const shiny_mat: Material = .init(Metal, &shiny);
+
     var spheres = [_]Sphere{
-        .init(.init(0.1,1,-2), 0.65),
-        .init(.init(0,0,-1), 0.5),
-        .init(.init(1,0,-2), 0.5),
-        .init(.init(1,0,-15), 10.0),
-        .init(.init(1,10,-10), 8.0),
-        .init(.init(-5,2,-7), 2.0),
-        .init(.init(-2,1,-2), 0.1),
-        .init(.init(1.4,0.1,-1.4), 0.2),
-        .init(.init(0,-250.5,-1), 250),
+        .init(.init(0.1,1,-2), 0.65,&shiny_mat),
+        .init(.init(0,0,-1), 0.5,&shiny_mat),
+        .init(.init(1,0,-2), 0.5,&shiny_mat),
+        .init(.init(1,0,-15), 10.0,&shiny_mat),
+        .init(.init(1,10,-10), 8.0,&shiny_mat),
+        .init(.init(-5,2,-7), 2.0,&shiny_mat),
+        .init(.init(-2,1,-2), 0.1,&shiny_mat),
+        .init(.init(1.4,0.1,-1.4), 0.2,&shiny_mat),
+        .init(.init(0,-250.5,-1), 250,&dull_mat),
     };
 
     var triangles = [_]Triangle{
-        //.init(.init(-4,2,-1), .init(1,0,0), .init(-8,2,-8)),
-        .init(.init(-7,-2,-1), .init(0,1,-0.5), .init(-8,2,-8)),
-        .init(.init(6,-2,-4), .init(0,0,-0.2), .init(3,2,-8)),
-        .init(.init(-2,-0.5,-1), .init(-1,-0.25,-0.4), .init(3,-0.1,-0.6)),
+        //.init(.init(-4,2,-1), .init(1,0,0), .init(-8,2,-8),&shiny_mat),
+        .init(.init(-7,-2,-1), .init(0,1,-0.5), .init(-8,2,-8),&shiny_mat),
+        .init(.init(6,-2,-4), .init(0,0,-0.2), .init(3,2,-8),&shiny_mat),
+        .init(.init(-2,-0.5,-1), .init(-1,-0.25,-0.4), .init(3,-0.1,-0.6),&shiny_mat),
     };
 
     var cubes = [_]Cube{
-        .init(.init(-5,3.6,-7), 4.0),
-        .init(.init(9.6,4.5,-8.5), 5.5),
-        .init(.init(0,0,2), 4.99),
+        .init(.init(-5,3.6,-7), 4.0,&shiny_mat),
+        .init(.init(9.6,4.5,-8.5), 5.5,&shiny_mat),
+        .init(.init(0,0,2), 4.99,&shiny_mat),
     };
 
     for (&spheres) |*s| {

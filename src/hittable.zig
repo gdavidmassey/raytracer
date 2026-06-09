@@ -2,7 +2,9 @@ const std = @import("std");
 const Vec3 = @import("vec3.zig");
 const Point3 = Vec3;
 const Ray = @import("ray.zig");
+const Color = @import("color.zig").Color;
 const Interval = @import("interval.zig");
+const Material = @import("material.zig");
 
 pub const HitRecord = struct {
     const this = @This();
@@ -10,6 +12,7 @@ pub const HitRecord = struct {
     p: Point3,
     normal: Vec3,
     front_face: bool = undefined,
+    material: *const Material = undefined,
 
     pub fn set_face_normal(self: *this, r: Ray, outward_normal: Vec3) void {
         self.front_face = r.dir.dot(outward_normal) < 0;
@@ -36,3 +39,6 @@ fn hitImp(comptime T: type) *const fn (*anyopaque, Ray, Interval) ?HitRecord {
 pub fn hit(self: @This(), r: Ray, ray_t: Interval) ?HitRecord {
     return self.hitFn(self.obj, r, ray_t);
 }
+
+
+

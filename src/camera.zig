@@ -59,18 +59,20 @@ pub fn init(self: *@This()) void {
     self.pixel00_loc = viewport_upper_left.add(self.pixel_delta_u.add(self.pixel_delta_v).mulScalar(0.5));
 }
 
-pub fn ray_color(rand: std.Random, r: Ray, depth: usize, world: Hittable) Color {
+pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color {
     
     if (depth == 0) return .init(0,0,0);
     var ray_col: Color = .init(1.0,0,1.0);
-    ray_col = if (world.hit(r, Interval.init(0.001, std.math.inf(f64)))) |hr| t: {
+    ray_col = if (world.hit(r, Interval.init(0.001, std.math.inf(f64)))) |hrc| t: {
+        var hr = hrc;
         //const N_ = r.at(hr.t).sub(.init(0,0,-1)).unit_vector();
         //const N = hr.normal.lerp(N_,0.35).unit_vector();
         ////N.e[2] = 1.0;
         //break :t N.rgb();
         //const direction = Vec3.random_unit_vector(rand).add(hr.normal);
-        const direction = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
-        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulElement(Color.init(0.6,0.6,0.6));
+        //const direction = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
+        const direction = hr.material.scatter(rand, r, &hr);
+        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulElement(hr.material.albedo());
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
@@ -80,7 +82,7 @@ pub fn ray_color(rand: std.Random, r: Ray, depth: usize, world: Hittable) Color 
     return ray_col;
 }
 
-fn get_ray(self: this, rand: std.Random, i: usize, j: usize) Ray {
+fn get_ray(self: this, rand: *std.Random, i: usize, j: usize) Ray {
     // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i,j
 
     const offset: Vec3 = sample_square(rand);
@@ -96,7 +98,7 @@ fn get_ray(self: this, rand: std.Random, i: usize, j: usize) Ray {
     return .init(ray_origin, ray_direction);
 }
 
-fn sample_square(rand: std.Random) Vec3 {
+fn sample_square(rand: *std.Random) Vec3 {
     // Returns the vector to a random point in the [-.5, -.5]-[.5,.5] unit square.
     return .init(rand.float(f64) - 0.5, rand.float(f64) - 0.5, 0);
 }
@@ -139,13 +141,13 @@ pub fn render_row(self: this, buffer: []Color, row: *std.atomic.Value(usize), wo
         const next_row = row.fetchAdd(1, .monotonic);
         if (next_row >= self.image_height) break;
         var prng = std.Random.DefaultPrng.init(next_row);
-        const rand = prng.random();
+        var rand = prng.random();
         for (0..self.image_width) |i| {
            var pixel_color: Color = .init(0,0,0);
 
            for (0..self.samples_per_pixel) |_| {
-               const ray: Ray = self.get_ray(rand, i, next_row);
-               pixel_color.addEq(ray_color(rand, ray, self.max_depth, world));
+               const ray: Ray = self.get_ray(&rand, i, next_row);
+               pixel_color.addEq(ray_color(&rand, ray, self.max_depth, world));
            }
 
             buffer[self.image_width * next_row + i] = pixel_color.mulScalar(self.pixel_samples_scale);

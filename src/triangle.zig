@@ -2,6 +2,7 @@ const std = @import("std");
 const Vec3 = @import("vec3.zig");
 const Point3 = Vec3;
 const Ray = @import("ray.zig");
+const Material = @import("material.zig");
 const Interval = @import("interval.zig");
 const HitRecord = @import("hittable.zig").HitRecord;
 const this = @This();
@@ -9,9 +10,11 @@ const this = @This();
 v0: Point3,
 v1: Point3,
 v2: Point3,
+material: *const Material,
 
-pub fn init(v0: Point3, v1: Point3, v2: Point3) this {
-    return .{.v0 = v0, .v1 = v1, .v2 = v2};
+
+pub fn init(v0: Point3, v1: Point3, v2: Point3, material: *const Material) this {
+    return .{.v0 = v0, .v1 = v1, .v2 = v2, .material = material};
 }
 
 pub fn hit(self: this, r: Ray, ray_t: Interval) ?HitRecord {
@@ -50,6 +53,7 @@ pub fn hit(self: this, r: Ray, ray_t: Interval) ?HitRecord {
     };
 
     rec.set_face_normal(r, normal);
+    rec.material = self.material;
     return rec;
 }
 

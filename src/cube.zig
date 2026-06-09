@@ -2,15 +2,17 @@ const std = @import("std");
 const Vec3 = @import("vec3.zig");
 const Point3 = Vec3;
 const Ray = @import("ray.zig");
+const Material = @import("material.zig");
 const Interval = @import("interval.zig");
 const this = @This();
 const HitRecord = @import("hittable.zig").HitRecord;
 
 center: Point3,
 side: f64,
+material: *const Material,
 
-pub fn init(center: Point3, side: f64) this {
-    return .{.center = center, .side = @max(0,side)};
+pub fn init(center: Point3, side: f64, material: *const Material) this {
+    return .{.center = center, .side = @max(0,side), .material = material};
 }
 
 pub fn hit(self: this, r: Ray, ray_t: Interval) ?HitRecord {
@@ -56,6 +58,7 @@ pub fn hit(self: this, r: Ray, ray_t: Interval) ?HitRecord {
     };
 
     rec.set_face_normal(r, normal);
+    rec.material = self.material;
     return rec;
 }
 
