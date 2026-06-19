@@ -11,8 +11,9 @@ pub fn init(albedo: Color) this {
     return .{.albedo = albedo};
 }
 
-pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord) Vec3 {
+pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
     _ = rand;
-    _ = self;
-    return r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
+    attenuation.* = self.albedo;
+    r_scatter.* = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
+    return true;
 }

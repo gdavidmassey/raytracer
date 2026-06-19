@@ -13,8 +13,12 @@ pub fn init(albedo: Color) this {
 
 pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
     _= r;
-    attenuation.* = self.albedo;
-    r_scatter.* = Vec3.random_unit_vector(rand).add(hr.normal);
-    return true;
+    return false;
 }
+
+pub fn emit(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
+    _= r;
+    return false;
+}
+
 

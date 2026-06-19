@@ -71,8 +71,10 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
         //break :t N.rgb();
         //const direction = Vec3.random_unit_vector(rand).add(hr.normal);
         //const direction = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
-        const direction = hr.material.scatter(rand, r, &hr);
-        break :t ray_color(rand, .init(hr.p, direction), depth - 1, world).mulElement(hr.material.albedo());
+        var scatter: Vec3 = undefined;
+        var attenuation: Color = undefined;
+        _ = hr.material.scatter(rand, r, &hr, &scatter, &attenuation);
+        break :t ray_color(rand, .init(hr.p, scatter), depth - 1, world).mulElement(attenuation);
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
