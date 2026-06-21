@@ -74,11 +74,15 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
         var scatter: Vec3 = undefined;
         var attenuation: Color = undefined;
         _ = hr.material.scatter(rand, r, &hr, &scatter, &attenuation);
+        if (hr.material.emit(&attenuation)){
+            break :t attenuation;
+        }
         break :t ray_color(rand, .init(hr.p, scatter), depth - 1, world).mulElement(attenuation);
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
-        break :f Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
+        //break :f Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
+        break :f Color.init(0,0,0.1).lerp(.init(0.0,0.0,0.04),a);
     };
 
     return ray_col;

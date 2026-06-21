@@ -9,44 +9,52 @@ const Color = @import("color.zig").Color;
 const this = @This();
 
 obj: *anyopaque,
-vtable: *const this.MaterialVTable,
+vtable: *const MaterialVTable,
 
 pub const MaterialVTable = struct {
-    scatterFn: *const fn(*anyopaque, *std.Random, Ray, *HitRecord, *Vec3, *Color) bool,
-    albedoFn: *const fn(*anyopaque) Color,
+    scatter: *const fn(*anyopaque, *std.Random, Ray, *HitRecord, *Vec3, *Color) bool,
+    albedo: *const fn(*anyopaque) Color,
+    emit: *const fn(*anyopaque, *Color) bool,
 };
 
 pub fn init(comptime T: type, obj: *T) @This() {
-    return .{.obj = obj, .scatterFn = scatterImp(T), .albedoFn = albedoImp(T)};
+    return .{.obj = obj, .vtable = comptime &makeVTable(T)};
 }
 
-
-
-fn scatterImp(comptime T: type) *const fn (*anyopaque, *std.Random, Ray, *HitRecord, *Vec3, *Color) bool {
-    return struct {
-        fn f(ptr: *anyopaque, rand: *std.Random, r_in: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
-            const self = @as(*T, @ptrCast(@alignCast(ptr)));
-            return self.scatter(rand, r_in, hr, r_scatter, attenuation);
-        }
-    }.f;
+pub fn makeVTable(comptime T: type) MaterialVTable {
+    return .{
+        .scatter = struct {
+            fn f(ptr: *anyopaque, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
+                const self = @as(*T, @ptrCast(@alignCast(ptr)));
+                return self.scatter(rand, r, hr, r_scatter,attenuation);
+            }
+        }.f,
+        .albedo = struct {
+            fn f(ptr: *anyopaque) Color {
+                const self = @as(*T, @ptrCast(@alignCast(ptr)));
+                return self.albedo;
+            }
+        }.f,
+        .emit = struct {
+            fn f(ptr: *anyopaque, color: *Color)  bool {
+                const self = @as(*T, @ptrCast(@alignCast(ptr)));
+                return self.emit(color);
+            }
+        }.f
+    };
 }
 
-pub fn scatter(self: *const @This(), rand: * std.Random, r_in: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
+pub fn scatter(self: *const @This(), rand: *std.Random, r_in: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
     //hr.material = self;
-    return self.scatterFn(self.obj, rand, r_in, hr, r_scatter, attenuation);
-}
-
-
-pub fn albedoImp(comptime T: type) *const fn (*anyopaque) Color {
-    return struct {
-        fn f(ptr: *anyopaque) Color {
-            const self = @as(*T, @ptrCast(@alignCast(ptr)));
-            return self.albedo;
-        }
-    }.f;
+    return self.vtable.scatter(self.obj, rand, r_in, hr, r_scatter, attenuation);
 }
 
 pub fn albedo(self: *const @This()) Color {
-    return self.albedoFn(self.obj);
+    return self.vtable.albedo(self.obj);
 }
+
+pub fn emit(self: *const @This(), color: *Color) bool {
+    return self.vtable.emit(self.obj, color);
+}
+
 

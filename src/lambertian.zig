@@ -18,3 +18,9 @@ pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter:
     return true;
 }
 
+pub fn emit(self: this, color: *Color) bool {
+    _ = color;
+    _ = self;
+    return false;
+}
+

@@ -10,6 +10,7 @@ const HittableList = @import("hittableList.zig");
 const Material = @import("material.zig");
 const Metal = @import("metal.zig");
 const Lambertian = @import("lambertian.zig");
+const Light = @import("light.zig");
 
 pub fn main(init: std.process.Init) !void {
     // This is appropriate for anything that lives as long as the process.
@@ -28,7 +29,7 @@ pub fn main(init: std.process.Init) !void {
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 1000; //3840;
-    cam.samples_per_pixel = 1;
+    cam.samples_per_pixel = 255;
     cam.max_depth = 20;
     cam.init();
     // World
@@ -42,13 +43,16 @@ pub fn main(init: std.process.Init) !void {
     var shiny: Metal = .init(.init(0.5,0.5,0.5));
     const shiny_mat: Material = .init(Metal, &shiny);
 
+    var bright: Light = .init(.init(0.9,0.9,0.4));
+    const bright_mat: Material = .init(Light, &bright);
+
     var spheres = [_]Sphere{
         .init(.init(0.1,1,-2), 0.65,&shiny_mat),
         .init(.init(0,0,-1), 0.5,&shiny_mat),
         .init(.init(1,0,-2), 0.5,&shiny_mat),
         .init(.init(1,0,-15), 10.0,&shiny_mat),
         .init(.init(1,10,-10), 8.0,&shiny_mat),
-        .init(.init(-5,2,-7), 2.0,&shiny_mat),
+        .init(.init(-5,2,-7), 2.0,&bright_mat),
         .init(.init(-2,1,-2), 0.1,&shiny_mat),
         .init(.init(1.4,0.1,-1.4), 0.2,&shiny_mat),
         .init(.init(0,-250.5,-1), 250,&dull_mat),

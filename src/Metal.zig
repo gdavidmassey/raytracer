@@ -17,3 +17,10 @@ pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter:
     r_scatter.* = r.dir.sub(hr.normal.mulScalar(r.dir.dot(hr.normal) * 2));
     return true;
 }
+
+pub fn emit(self: this, color: *Color) bool {
+    _ = color;
+    _ = self;
+    return false;
+}
+

@@ -12,13 +12,18 @@ pub fn init(albedo: Color) this {
 }
 
 pub fn scatter(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
+    _= self;
+    _= rand;
     _= r;
+    _= hr;
+    _= r_scatter;
+    _= attenuation;
     return false;
 }
 
-pub fn emit(self: this, rand: *std.Random, r: Ray, hr: *HitRecord, r_scatter: *Vec3, attenuation: *Color) bool {
-    _= r;
-    return false;
+pub fn emit(self: this, color: *Color) bool {
+    color.* = self.albedo;
+    return true;
 }
 
 
