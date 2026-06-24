@@ -15,6 +15,8 @@ image_width: usize = 100,
 samples_per_pixel: usize = 10,
 max_depth: usize = 10,
 
+vfov: f64 = 120,
+
 image_height: usize = undefined,
 pixel_samples_scale: f64 = undefined,
 center: Point3 = undefined,
@@ -24,6 +26,10 @@ pixel_delta_v: Vec3 = undefined,
 
 
 const this = @This();
+
+fn degress_to_radians(deg: f64) f64 {
+    return deg * std.math.pi / 180;
+}
 
 pub fn init(self: *@This()) void {
     // Camera
@@ -37,7 +43,9 @@ pub fn init(self: *@This()) void {
 
     // Determine viewport dimensions.
     const focal_length: f64 = 1.0;
-    const viewport_height: f64 = 2.0;
+    const theta = degress_to_radians(self.vfov);
+    const h = std.math.tan(theta / 2);
+    const viewport_height: f64 = 2.0 * h * focal_length;
     const viewport_width = viewport_height * @as(f64,@floatFromInt(self.image_width)) / @as(f64,@floatFromInt(self.image_height));
   
     // Calculate the vectors across the horizontal and down the vertical viewport edges.
@@ -81,12 +89,16 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
     } else f: {
         const unit_direction: Vec3 = r.dir.unit_vector();
         const a: f64 = 0.5 * (unit_direction.y() + 1.0);
+        // gradient across top half of screen.
+        //var a: f64 = 0.5 * (unit_direction.y() + 1.0);
+        //a = if (a < 0.5 ) 0 else a * 2 - 1;
         //break :f Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
-        break :f Color.init(0,0,0.1).lerp(.init(0.0,0.0,0.04),a);
+        break :f Color.init(0.3,0.0,0.0).lerp(.init(0.5,0.5,0.9),a);
     };
 
     return ray_col;
 }
+
 
 fn get_ray(self: this, rand: *std.Random, i: usize, j: usize) Ray {
     // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i,j

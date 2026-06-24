@@ -29,7 +29,7 @@ pub fn main(init: std.process.Init) !void {
     var cam: Camera = .{};
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 1000; //3840;
-    cam.samples_per_pixel = 255;
+    cam.samples_per_pixel = 15;
     cam.max_depth = 20;
     cam.init();
     // World
@@ -43,7 +43,7 @@ pub fn main(init: std.process.Init) !void {
     var shiny: Metal = .init(.init(0.5,0.5,0.5));
     const shiny_mat: Material = .init(Metal, &shiny);
 
-    var bright: Light = .init(.init(0.9,0.9,0.4));
+    var bright: Light = .init(.init(1,1,0.8));
     const bright_mat: Material = .init(Light, &bright);
 
     var spheres = [_]Sphere{
