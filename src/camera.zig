@@ -15,7 +15,7 @@ image_width: usize = 100,
 samples_per_pixel: usize = 10,
 max_depth: usize = 10,
 
-vfov: f64 = 120,
+vfov: f64 = 90,
 
 image_height: usize = undefined,
 pixel_samples_scale: f64 = undefined,
@@ -33,7 +33,7 @@ fn degress_to_radians(deg: f64) f64 {
 
 pub fn init(self: *@This()) void {
     // Camera
-    // Viewport widths less than one are ok ther are real valued.
+    // Viewport widths less than one are ok they are real valued.
     self.image_height = @intFromFloat(@as(f64,@floatFromInt(self.image_width)) / self.aspect_ratio);
     self.image_height = if (self.image_height < 1) 1 else self.image_height;
     
@@ -172,4 +172,8 @@ pub fn render_row(self: this, buffer: []Color, row: *std.atomic.Value(usize), wo
         }
         std.debug.print("\rScanlines remaining: {}",.{self.image_height - next_row});
     }
+}
+
+fn degrees_to_radians(deg: f64) f64 {
+    return deg * std.math.pi / 180.0;
 }

@@ -19,6 +19,7 @@ pub fn main(init: std.process.Init) !void {
 
     //var prng = std.Random.DefaultPrng.init(1);
     //var rng = prng.random();
+    //small change
 
     const rng_impl: std.Random.IoSource = .{ .io = io};
     const srand = rng_impl.interface();
