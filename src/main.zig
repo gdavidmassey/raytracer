@@ -32,6 +32,13 @@ pub fn main(init: std.process.Init) !void {
     cam.image_width = 1000; //3840;
     cam.samples_per_pixel = 15;
     cam.max_depth = 20;
+
+    cam. vfov = 120;
+    cam.lookfrom = .init(4,2,4);
+    cam.lookat = .init(0,0,-1);
+    cam.vup = .init(0,1,0);
+
+
     cam.init();
     // World
     var world: HittableList = .{};
@@ -88,6 +95,7 @@ pub fn main(init: std.process.Init) !void {
     const thread_buffer = try arena.alloc(std.Thread,8); 
     defer arena.free(color_buffer);
     defer arena.free(thread_buffer);
+
     try cam.render(io, color_buffer, thread_buffer, hittable_world);
 }
 

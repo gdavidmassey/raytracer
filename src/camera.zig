@@ -17,21 +17,28 @@ max_depth: usize = 10,
 
 vfov: f64 = 90,
 
+lookfrom: Point3 = .init(0,0,0),
+lookat: Point3 = .init(0,0,-1),
+vup: Vec3 = .init(0,1,0),
+
+
 image_height: usize = undefined,
 pixel_samples_scale: f64 = undefined,
 center: Point3 = undefined,
 pixel00_loc: Point3 = undefined,
 pixel_delta_u: Vec3 = undefined,
 pixel_delta_v: Vec3 = undefined,
+u: Vec3 = undefined,
+v: Vec3 = undefined,
+w: Vec3 = undefined,
 
-
-const this = @This();
+const Camera = @This();
 
 fn degress_to_radians(deg: f64) f64 {
     return deg * std.math.pi / 180;
 }
 
-pub fn init(self: *@This()) void {
+pub fn init(self: *Camera) void {
     // Camera
     // Viewport widths less than one are ok they are real valued.
     self.image_height = @intFromFloat(@as(f64,@floatFromInt(self.image_width)) / self.aspect_ratio);
@@ -39,18 +46,23 @@ pub fn init(self: *@This()) void {
     
     self.pixel_samples_scale = 1.0 / @as(f64,@floatFromInt(self.samples_per_pixel));
 
-    self.center = .init(0,0,0);
+    self.center = self.lookfrom;
 
     // Determine viewport dimensions.
-    const focal_length: f64 = 1.0;
+    const focal_length: f64 = self.lookfrom.sub(self.lookat).length();
     const theta = degress_to_radians(self.vfov);
     const h = std.math.tan(theta / 2);
     const viewport_height: f64 = 2.0 * h * focal_length;
     const viewport_width = viewport_height * @as(f64,@floatFromInt(self.image_width)) / @as(f64,@floatFromInt(self.image_height));
+
+    // Calculate the u,v,w unit base vectors for the camera coordinate frame.
+    self.w = self.lookfrom.sub(self.lookat).unit_vector();
+    self.u = self.vup.cross(self.w).unit_vector();
+    self.v = self.w.cross(self.u);
   
     // Calculate the vectors across the horizontal and down the vertical viewport edges.
-    const viewport_u: Vec3 = .init(viewport_width, 0,0);
-    const viewport_v: Vec3 = .init(0,-viewport_height, 0);
+    const viewport_u: Vec3 = self.u.mulScalar(viewport_width);
+    const viewport_v: Vec3 = self.v.mulScalar(-viewport_height);
 
     // Calculate the horizontal and vertical delta vecotrs from pixel to pixel.
     self.pixel_delta_u = viewport_u.divScalar(@floatFromInt(self.image_width));
@@ -58,7 +70,7 @@ pub fn init(self: *@This()) void {
 
     // Calculate the location of the upper left pixel.
     const viewport_upper_left = self.center.sub(
-        Vec3.init(0,0,focal_length)
+        self.w.mulScalar(focal_length)
         ).sub(
         viewport_u.divScalar(2)
         ).sub(
@@ -93,14 +105,14 @@ pub fn ray_color(rand: *std.Random, r: Ray, depth: usize, world: Hittable) Color
         //var a: f64 = 0.5 * (unit_direction.y() + 1.0);
         //a = if (a < 0.5 ) 0 else a * 2 - 1;
         //break :f Color.init(1,1,1).lerp(.init(0.2,0.7,1.0),a);
-        break :f Color.init(0.3,0.0,0.0).lerp(.init(0.5,0.5,0.9),a);
+        break :f Color.init(0.3,0.0,0.0).lerp(.init(0.1,0.1,0.4),a);
     };
 
     return ray_col;
 }
 
 
-fn get_ray(self: this, rand: *std.Random, i: usize, j: usize) Ray {
+fn get_ray(self: Camera, rand: *std.Random, i: usize, j: usize) Ray {
     // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i,j
 
     const offset: Vec3 = sample_square(rand);
@@ -121,7 +133,7 @@ fn sample_square(rand: *std.Random) Vec3 {
     return .init(rand.float(f64) - 0.5, rand.float(f64) - 0.5, 0);
 }
 
-pub fn render(self: this, io: std.Io, color_buffer: []Color, threads: []std.Thread, world: Hittable) !void {
+pub fn render(self: Camera, io: std.Io, color_buffer: []Color, threads: []std.Thread, world: Hittable) !void {
     var buffer: [1024]u8 = undefined;
     const file = try std.Io.Dir.cwd().createFile(io, "./res/test_out.ppm", .{});
     defer file.close(io);
@@ -154,7 +166,7 @@ pub fn render(self: this, io: std.Io, color_buffer: []Color, threads: []std.Thre
     std.debug.print("\rDone.                          \n",.{});
 }
 
-pub fn render_row(self: this, buffer: []Color, row: *std.atomic.Value(usize), world: Hittable) !void {
+pub fn render_row(self: Camera, buffer: []Color, row: *std.atomic.Value(usize), world: Hittable) !void {
     while (true) {
         const next_row = row.fetchAdd(1, .monotonic);
         if (next_row >= self.image_height) break;
